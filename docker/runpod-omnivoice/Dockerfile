@@ -1,5 +1,8 @@
 # OmniVoice RunPod Serverless Worker (model baked in)
-# Omnilingual zero-shot TTS / voice cloning (k2-fsa/OmniVoice), fp16 inference.
+# Omnilingual zero-shot TTS / voice cloning (k2-fsa/OmniVoice), fp32 inference.
+# torch>=2.5 base is REQUIRED: omnivoice needs transformers>=5.3.0, which imports
+# DTensor from the public torch.distributed.tensor (added in torch 2.5). The old
+# torch 2.4 base broke with "cannot import name 'DTensor'".
 #
 # Build (from repo root):
 #   docker buildx build --platform linux/amd64 -t ghcr.io/<your-namespace>/video-toolkit-omnivoice:latest --push docker/runpod-omnivoice/
@@ -9,7 +12,7 @@
 # Test locally:
 #   docker run --gpus all -p 8000:8000 ghcr.io/<your-namespace>/video-toolkit-omnivoice:latest
 
-FROM runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04
+FROM pytorch/pytorch:2.6.0-cuda12.4-cudnn9-devel
 
 # Install ffmpeg for WAV -> MP3 conversion
 RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg && rm -rf /var/lib/apt/lists/*
