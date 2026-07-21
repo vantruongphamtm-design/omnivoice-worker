@@ -36,7 +36,7 @@ jobs:
         with:
           context: ./docker/runpod-omnivoice
           platforms: linux/amd64
-          push: true
+          outputs: type=registry,oci-mediatypes=false
           provenance: false
           sbom: false
           # Mỗi build có tag RIÊNG theo commit sha, KHÔNG ghi đè tag đang chạy.
