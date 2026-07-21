@@ -37,6 +37,8 @@ jobs:
           context: ./docker/runpod-omnivoice
           platforms: linux/amd64
           push: true
+          provenance: false
+          sbom: false
           # Mỗi build có tag RIÊNG theo commit sha, KHÔNG ghi đè tag đang chạy.
           # Trước đây CI luôn push đè `chunk-v1`, nên digest cũ bị dọn và khi bản mới
           # hỏng thì không còn image nào để lùi về (sự cố 2026-07-19). Tag theo sha

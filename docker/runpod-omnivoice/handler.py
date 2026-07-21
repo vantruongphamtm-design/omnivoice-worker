@@ -63,8 +63,6 @@ import sys
 import tempfile
 import time
 import uuid
-import re
-import math
 from pathlib import Path
 from typing import Optional
 
@@ -72,13 +70,6 @@ import numpy as np
 import runpod
 import requests
 import soundfile as sf
-
-# Optional Underthesea for Vietnamese NLP
-try:
-    from underthesea import pos_tag
-    HAS_UNDERTHESEA = True
-except ImportError:
-    HAS_UNDERTHESEA = False
 
 # Lazy-loaded, kept in GPU memory between requests
 _model = None
@@ -273,59 +264,6 @@ def chunk_text(text: str, max_chars: int = DEFAULT_CHUNK_CHARS) -> list:
     return [text.strip()] if text.strip() else []
 
 
-# ─── NLP Tiếng Việt (Underthesea) ───────────────────────────
-
-def add_prosody_pauses(text: str) -> str:
-    """Tự động thêm dấu phẩy và dấu ba chấm để ngắt nhịp thở tự nhiên dựa trên ngữ pháp tiếng Việt."""
-    if not HAS_UNDERTHESEA:
-        return text
-        
-    try:
-        tagged = pos_tag(text)
-        result = []
-        chunk_length = 0
-        
-        for i, (word, pos) in enumerate(tagged):
-            syllables = len(word.split())
-            chunk_length += syllables
-            
-            needs_pause = False
-            pause_char = ","
-            
-            if i > 0:
-                prev_word, prev_pos = tagged[i-1]
-                if prev_pos != 'CH':
-                    word_lower = word.lower()
-                    if word_lower in ["tuy nhiên", "nhưng", "song", "mặc dù"]:
-                        needs_pause = True
-                        pause_char = "..."
-                    elif pos == 'C' and chunk_length >= 5:
-                        if word_lower not in ["và", "hoặc", "hay"] or chunk_length >= 10:
-                            needs_pause = True
-                            pause_char = ","
-                    elif pos == 'E' and chunk_length >= 10:
-                        if prev_pos not in ['V', 'R']:
-                            needs_pause = True
-                            pause_char = ","
-                    elif chunk_length >= 20 and pos in ['N', 'P']:
-                        needs_pause = True
-                        pause_char = ","
-
-            if needs_pause:
-                if result:
-                    result[-1] += pause_char
-                chunk_length = syllables
-                
-            result.append(word)
-            if pos == 'CH':
-                chunk_length = 0
-                
-        return " ".join(result)
-    except Exception as e:
-        log(f"Underthesea error: {e}")
-        return text
-
-
 # ─── Handler ────────────────────────────────────────────────
 
 def handler(job: dict) -> dict:
@@ -341,12 +279,6 @@ def handler(job: dict) -> dict:
         return {"error": "Missing required field: text"}
 
     language = job_input.get("language")
-    
-    # ── Áp dụng NLP để ngắt nhịp nếu là tiếng Việt ──
-    if language in ["vi", "vn", "vietnamese"]:
-        text = add_prosody_pauses(text)
-        log(f"Text after NLP prosody: {text}")
-
     output_format = job_input.get("output_format", "mp3")
     r2_config = job_input.get("r2")
     instruct = job_input.get("instruct")
@@ -376,9 +308,6 @@ def handler(job: dict) -> dict:
 
         model = get_model()
 
-        temperature = max(0.0, min(1.0, float(job_input.get("temperature", 0.0))))
-        log(f"Using temperature (class_temperature): {temperature}")
-
         gen_kwargs = dict(
             text=text,
             language=language,
@@ -391,7 +320,6 @@ def handler(job: dict) -> dict:
             speed=float(job_input.get("speed", 1.0)),
             t_shift=float(job_input.get("t_shift", 0.1)),
             denoise=bool(job_input.get("denoise", True)),
-            class_temperature=temperature,
         )
 
         log(f"Job {job_id}: mode={mode}, generating...")

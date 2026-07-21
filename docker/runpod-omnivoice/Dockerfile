@@ -36,8 +36,7 @@ RUN pip install --no-cache-dir \
     omnivoice \
     runpod \
     boto3 \
-    requests \
-    underthesea
+    requests
 
 WORKDIR /app
 
