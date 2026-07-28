@@ -22,9 +22,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg && rm -r
 # khong keo torch (deps torch nam trong extra [gpu]) nen KHONG de len torch cu128 cua base.
 # TODO(build): neu load loi thieu dep -> them dep do (xac minh tren build 3.2.3 that, khong phai 3.0.12).
 RUN pip install --no-cache-dir torchaudio==2.8.0 --index-url https://download.pytorch.org/whl/cu128 \
- && pip install --no-cache-dir "transformers==4.57.6" librosa einops huggingface_hub \
+ && pip install --no-cache-dir "transformers==4.57.6" librosa einops \
  && pip install --no-cache-dir "vieneu==3.2.3" runpod boto3 requests soundfile \
+ && pip install --no-cache-dir "huggingface_hub>=0.34.0,<1.0" \
  && pip check || echo "[warn] pip check co canh bao (xem lai neu load loi)"
+# LUU Y: transformers 4.57.6 yeu cau huggingface_hub<1.0. Cai hub SAU CUNG voi pin <1.0 de
+# lo bat ky package nao (vieneu...) keo hub>=1.0 len (loi da gap: found huggingface-hub==1.25.1).
 
 WORKDIR /app
 ENV HF_HOME=/root/.cache/huggingface
