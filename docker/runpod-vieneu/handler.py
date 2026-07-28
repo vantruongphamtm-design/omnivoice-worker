@@ -282,6 +282,7 @@ def handler(job: dict) -> dict:
         style = "doc_truyen"
     temperature = float(job_input.get("temperature", 0.7) or 0.7)   # bien hoa ngu dieu (chong "deu deu")
     top_p = float(job_input.get("top_p", 0.95) or 0.95)
+    silence_p = max(0.0, min(0.5, float(job_input.get("silence_p", 0.15) or 0.15)))  # Khoang nghi (giay)
     # ref_text / instruct / language / num_step / guidance_scale / t_shift: nhan nhung BO QUA
 
     work_dir = Path(tempfile.mkdtemp(prefix=f"vieneu_{job_id}_"))
@@ -309,10 +310,10 @@ def handler(job: dict) -> dict:
         try:
             chunks = chunk_text(str(text))
             log(f"Job {job_id}: mode={mode}, {len(chunks)} chunk(s), generating...")
-            gap = np.zeros(int(sr * CHUNK_GAP_SECONDS), dtype=np.float32)
+            gap = np.zeros(int(sr * silence_p), dtype=np.float32)   # Khoang nghi giua cac chunk theo silence_p
             parts = []
             for i, ch in enumerate(chunks):
-                wav_i = eng.synth_chunk(ch, mode, slot, style=style, temperature=temperature, top_p=top_p)
+                wav_i = eng.synth_chunk(ch, mode, slot, style=style, temperature=temperature, top_p=top_p, silence_p=silence_p)
                 if wav_i.size:
                     parts.append(wav_i)
                     if i < len(chunks) - 1:

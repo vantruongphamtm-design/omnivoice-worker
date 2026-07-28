@@ -98,19 +98,19 @@ class VieNeuCloneEngine:
         except Exception:  # noqa: BLE001
             pass
 
-    def synth_chunk(self, text, mode, slot=None, style=DEFAULT_STYLE, temperature=0.7, top_p=0.95):
+    def synth_chunk(self, text, mode, slot=None, style=DEFAULT_STYLE, temperature=0.7, top_p=0.95, silence_p=0.15):
         """Sinh 1 chunk -> np.float32 @ sample_rate, co retry chong runaway.
 
         style: tu_nhien | tin_tuc | doc_truyen (kieu doc). temperature: bien hoa ngu dieu
-        (cao = it "deu deu" hon nhung de bat on hon). top_p: nucleus sampling.
-        Moi lan deu bat thuong -> giu ban IT LECH NHAT (khong bao gio bo cau); mang rong neu that bai.
+        (cao = it "deu deu" hon nhung de bat on hon). top_p: nucleus sampling. silence_p: khoang
+        nghi giua cac cau con ben trong (Khoang nghi slider). Moi lan bat thuong -> giu ban it lech nhat.
         """
         voice = slot if (mode == "clone" and slot) else self.default_voice
         best = None
         best_gap = float("inf")
         for _ in range(MAX_SYNTH_ATTEMPTS):
             cand = self._tts.infer(text, voice=voice, style=style, temperature=temperature,
-                                   top_p=top_p, apply_watermark=False)
+                                   top_p=top_p, silence_p=silence_p, apply_watermark=False)
             cand = np.asarray(cand, dtype=np.float32).reshape(-1)
             if cand.size == 0:
                 continue
