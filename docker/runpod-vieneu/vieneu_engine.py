@@ -22,7 +22,7 @@ TARGET_RMS_DBFS = -11.0
 PEAK_CEILING = 0.97
 MAX_SYNTH_ATTEMPTS = 4
 DEFAULT_VOICE = "Trúc Ly"      # mode="auto": giong nu trung tinh (fallback ve default cua model neu thieu)
-DEFAULT_STYLE = "tu_nhien"     # tu_nhien | tin_tuc | doc_truyen
+DEFAULT_STYLE = "doc_truyen"   # tu_nhien | tin_tuc | doc_truyen (chot doc_truyen: bot deu deu)
 
 
 def match_loudness(audio):
@@ -98,7 +98,7 @@ class VieNeuCloneEngine:
         except Exception:  # noqa: BLE001
             pass
 
-    def synth_chunk(self, text, mode, slot=None, style=DEFAULT_STYLE, temperature=0.8, top_p=0.95):
+    def synth_chunk(self, text, mode, slot=None, style=DEFAULT_STYLE, temperature=0.7, top_p=0.95):
         """Sinh 1 chunk -> np.float32 @ sample_rate, co retry chong runaway.
 
         style: tu_nhien | tin_tuc | doc_truyen (kieu doc). temperature: bien hoa ngu dieu

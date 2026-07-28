@@ -275,11 +275,12 @@ def handler(job: dict) -> dict:
     force_duration = job_input.get("duration")
     speed = float(job_input.get("speed", 1.0) or 1.0)
     denoise = bool(job_input.get("denoise", True))
-    # Thanh dieu chinh giong (VieNeu native):
-    style = job_input.get("style") or "tu_nhien"
+    # Thanh dieu chinh giong (VieNeu native). Mac dinh doc_truyen + 0.7: user chot 2026-07-28
+    # (bot "deu deu" hon tu_nhien/0.8 nhung phat am van chuan; temp cao hon lam sai phat am).
+    style = job_input.get("style") or "doc_truyen"
     if style not in ("tu_nhien", "tin_tuc", "doc_truyen"):
-        style = "tu_nhien"
-    temperature = float(job_input.get("temperature", 0.8) or 0.8)   # bien hoa ngu dieu (chong "deu deu")
+        style = "doc_truyen"
+    temperature = float(job_input.get("temperature", 0.7) or 0.7)   # bien hoa ngu dieu (chong "deu deu")
     top_p = float(job_input.get("top_p", 0.95) or 0.95)
     # ref_text / instruct / language / num_step / guidance_scale / t_shift: nhan nhung BO QUA
 
