@@ -275,7 +275,13 @@ def handler(job: dict) -> dict:
     force_duration = job_input.get("duration")
     speed = float(job_input.get("speed", 1.0) or 1.0)
     denoise = bool(job_input.get("denoise", True))
-    # ref_text / instruct / language / num_step / guidance_scale / t_shift / temperature: nhan nhung BO QUA
+    # Thanh dieu chinh giong (VieNeu native):
+    style = job_input.get("style") or "tu_nhien"
+    if style not in ("tu_nhien", "tin_tuc", "doc_truyen"):
+        style = "tu_nhien"
+    temperature = float(job_input.get("temperature", 0.8) or 0.8)   # bien hoa ngu dieu (chong "deu deu")
+    top_p = float(job_input.get("top_p", 0.95) or 0.95)
+    # ref_text / instruct / language / num_step / guidance_scale / t_shift: nhan nhung BO QUA
 
     work_dir = Path(tempfile.mkdtemp(prefix=f"vieneu_{job_id}_"))
     log(f"Working directory: {work_dir}")
@@ -305,7 +311,7 @@ def handler(job: dict) -> dict:
             gap = np.zeros(int(sr * CHUNK_GAP_SECONDS), dtype=np.float32)
             parts = []
             for i, ch in enumerate(chunks):
-                wav_i = eng.synth_chunk(ch, mode, slot)
+                wav_i = eng.synth_chunk(ch, mode, slot, style=style, temperature=temperature, top_p=top_p)
                 if wav_i.size:
                     parts.append(wav_i)
                     if i < len(chunks) - 1:
