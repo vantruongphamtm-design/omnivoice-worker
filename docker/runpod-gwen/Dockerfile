@@ -16,7 +16,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg sox && r
 # librosa, onnxruntime, einops... torch da co san (base) nen pip KHONG cai lai torch.
 # huggingface_hub<1.0: transformers 4.57.x doi (loi da gap o worker VieNeu: found hub 1.x).
 RUN pip install --no-cache-dir torchaudio==2.8.0 --index-url https://download.pytorch.org/whl/cu128 \
- && pip install --no-cache-dir "qwen-tts==0.1.1" runpod boto3 requests \
+ && pip install --no-cache-dir "qwen-tts==0.1.1" faster-whisper runpod boto3 requests \
  && pip install --no-cache-dir --no-deps --force-reinstall "huggingface_hub<1.0" \
  && pip check || echo "[warn] pip check co canh bao (xem lai neu load loi)"
 
@@ -27,6 +27,10 @@ ENV PYTHONUNBUFFERED=1
 # === BAKE MODEL CHINH VAO IMAGE (giam cold start) ===
 # KHONG set HF_HUB_OFFLINE: cho phep tai codec/tokenizer phu (neu qwen-tts can) luc chay lan dau.
 RUN python -c "from huggingface_hub import snapshot_download; print('Downloading Gwen-TTS 0.6B...'); snapshot_download('g-group-ai-lab/gwen-tts-0.6B'); print('Model baked.')"
+
+# Bake whisper 'small' (ASR fallback khi user clone khong nhap transcript). Tai model files
+# luc build (device cpu int8 chi de download); runtime chay lai tren GPU float16.
+RUN python -c "from faster_whisper import WhisperModel; WhisperModel('small', device='cpu', compute_type='int8'); print('Whisper small baked.')"
 
 COPY gwen_engine.py /app/gwen_engine.py
 COPY handler.py /app/handler.py

@@ -69,15 +69,33 @@ class GwenCloneEngine:
 
         self._torch = torch
         # sdpa: attention PyTorch native -> KHONG can flash-attn (build nhanh). Qwen3 ho tro sdpa.
-        # bf16: yeu cau GPU Ampere+ (RunPod AMPERE_24 OK; HONG tren T4/RTX20).
+        # fp32: chong "ngong"/meo phu am tieng Viet (bai hoc OmniVoice: bf16 lam hong codec).
+        # GPU 24GB (ADA_24/AMPERE_24) thua suc chay 0.6B fp32; cham hon nhung uu tien chat luong.
+        # DTYPE tu env de A/B nhanh (bf16|float16|float32) khong phai build lai.
+        import os as _os
+        _dt = {"bfloat16": torch.bfloat16, "float16": torch.float16, "float32": torch.float32}.get(
+            _os.environ.get("GWEN_DTYPE", "float32"), torch.float32)
         self._model = Qwen3TTSModel.from_pretrained(
             MODEL_ID,
             device_map="cuda:0",
-            dtype=torch.bfloat16,
+            dtype=_dt,
             attn_implementation="sdpa",
         )
         self.sample_rate = int(getattr(self._model, "sample_rate", 24000) or 24000)
+        self._asr = None  # faster-whisper lazy-load (chi khi thieu ref_text)
         log.info("Gwen-TTS (%s) loaded: sr=%d", MODEL_ID, self.sample_rate)
+
+    def transcribe(self, ref_audio_path, language="vi"):
+        """ASR clip mau -> transcript, dung khi user khong nhap ref_text (Gwen ICL CAN transcript).
+        Lazy-load faster-whisper 'small' tren GPU (float16)."""
+        if self._asr is None:
+            from faster_whisper import WhisperModel
+            self._asr = WhisperModel("small", device="cuda", compute_type="float16")
+            log.info("faster-whisper small loaded (ASR fallback)")
+        segments, _ = self._asr.transcribe(str(ref_audio_path), language=language, beam_size=1)
+        text = " ".join(s.text.strip() for s in segments).strip()
+        log.info("ASR ref_text (%d ky tu): %s", len(text), text[:80])
+        return text
 
     def warmup(self, ref_audio_path=None, ref_text="Xin chào."):
         """Sinh 1 cau ngan de nap kernel/graph. Clone can 1 ref -> chi warmup khi co san ref."""

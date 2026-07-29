@@ -303,7 +303,13 @@ def handler(job: dict) -> dict:
         eng = get_engine()
 
         if not ref_text.strip():
-            log(f"Job {job_id}: WARNING thieu ref_text -> clone chat luong co the giam.")
+            # Gwen ICL CAN transcript clip mau -> tu nhan dien (whisper) khi user khong nhap.
+            # (VieNeu clone khong can transcript; day la bu de KHONG regress khi thay engine.)
+            log(f"Job {job_id}: thieu ref_text -> ASR clip mau bang whisper...")
+            try:
+                ref_text = eng.transcribe(ref_path) or ""
+            except Exception as e:  # noqa: BLE001
+                log(f"Job {job_id}: ASR loi (bo qua): {e}")
 
         chunks = chunk_text(str(text))
         log(f"Job {job_id}: mode={mode}, lang={language}, {len(chunks)} chunk(s), generating...")
