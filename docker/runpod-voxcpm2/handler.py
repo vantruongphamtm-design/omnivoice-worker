@@ -145,16 +145,34 @@ def get_audio_duration(audio_path: Path) -> float:
         return 0.0
 
 
-def wav_to_mp3(wav_path: Path, mp3_path: Path) -> bool:
+def _atempo(speed: float) -> list:
+    """Filter chinh toc do (VoxCPM2 khong co param speed). atempo 1 filter: 0.5-2.0."""
+    s = min(2.0, max(0.5, float(speed)))
+    return ["-filter:a", f"atempo={s:.3f}"] if abs(s - 1.0) > 1e-3 else []
+
+
+def wav_to_mp3(wav_path: Path, mp3_path: Path, speed: float = 1.0) -> bool:
     try:
         subprocess.run(
-            ["ffmpeg", "-y", "-i", str(wav_path), "-codec:a", "libmp3lame",
-             "-b:a", "192k", str(mp3_path)],
+            ["ffmpeg", "-y", "-i", str(wav_path), *_atempo(speed),
+             "-codec:a", "libmp3lame", "-b:a", "192k", str(mp3_path)],
             capture_output=True, timeout=120, check=True,
         )
         return mp3_path.exists()
     except Exception as e:
         log(f"WAV to MP3 error: {e}")
+        return False
+
+
+def wav_with_speed(wav_path: Path, out_path: Path, speed: float) -> bool:
+    try:
+        subprocess.run(
+            ["ffmpeg", "-y", "-i", str(wav_path), *_atempo(speed), str(out_path)],
+            capture_output=True, timeout=120, check=True,
+        )
+        return out_path.exists()
+    except Exception as e:
+        log(f"WAV speed error: {e}")
         return False
 
 
@@ -298,14 +316,20 @@ def handler(job: dict) -> dict:
                     parts.append(gap)
             wav = np.concatenate(parts)
 
+        speed = float(ji.get("speed", 1.0) or 1.0)  # VoxCPM2 khong co speed -> lam bang ffmpeg atempo
         wav_path = work_dir / "out.wav"
         sf.write(str(wav_path), wav, _sr)
 
         if output_format == "mp3":
             out_path = work_dir / "out.mp3"
-            if not wav_to_mp3(wav_path, out_path):
+            if not wav_to_mp3(wav_path, out_path, speed):
                 return {"error": "Failed to convert WAV to MP3"}
             content_type = "audio/mpeg"
+        elif abs(min(2.0, max(0.5, speed)) - 1.0) > 1e-3:
+            out_path = work_dir / "out_spd.wav"
+            if not wav_with_speed(wav_path, out_path, speed):
+                return {"error": "Failed to apply speed"}
+            content_type = "audio/wav"
         else:
             out_path, content_type = wav_path, "audio/wav"
 
