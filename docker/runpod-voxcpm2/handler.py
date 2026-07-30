@@ -46,6 +46,7 @@ import soundfile as sf
 # Lazy-loaded, giu trong GPU giua cac request
 _model = None
 _sr: Optional[int] = None
+_whisper = None
 
 MODEL_ID = "openbmb/VoxCPM2"
 
@@ -79,6 +80,27 @@ def get_model():
         _sr = _sr or 16000
         log(f"VoxCPM2 loaded (sample_rate={_sr})")
     return _model
+
+
+def get_whisper():
+    """Lazy-load faster-whisper de tu phien am clip mau (VoxCPM2 clone BAT BUOC prompt_text).
+    Uu tien GPU; loi (cudnn mismatch...) thi fallback CPU (clip 15s CPU cung nhanh)."""
+    global _whisper
+    if _whisper is None:
+        from faster_whisper import WhisperModel
+        try:
+            _whisper = WhisperModel("base", device="cuda", compute_type="float16")
+            log("Whisper loaded on cuda")
+        except Exception as e:  # noqa: BLE001
+            log(f"Whisper cuda failed ({e}); fallback cpu")
+            _whisper = WhisperModel("base", device="cpu", compute_type="int8")
+    return _whisper
+
+
+def transcribe_ref(path: str) -> str:
+    """Tra ve transcript cua clip mau. Rong thi tra chuoi rong (noi goi tu xu ly)."""
+    segs, _info = get_whisper().transcribe(path)
+    return " ".join(s.text.strip() for s in segs).strip()
 
 
 # --- I/O helpers ------------------------------------------------------------
@@ -247,6 +269,12 @@ def handler(job: dict) -> dict:
 
         mode = "clone" if ref_audio_path is not None else "auto"
         model = get_model()
+
+        # VoxCPM2 clone BAT BUOC prompt_text. Clone ma khach khong gui ref_text -> tu phien am
+        # bang Whisper (khach chi can upload clip, khong phai go loi thoai).
+        if ref_audio_path is not None and not (ref_text and ref_text.strip()):
+            ref_text = transcribe_ref(str(ref_audio_path))
+            log(f"Job {job_id}: auto-transcribed ref -> {len(ref_text)} chars")
 
         def gen_one(t: str) -> np.ndarray:
             kw = dict(text=t, cfg_value=cfg_value,

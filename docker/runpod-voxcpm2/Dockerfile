@@ -10,7 +10,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg git && r
 
 # voxcpm keo torch/transformers/... theo pin cua no. Tren Linux, PyPI torch la ban CUDA
 # (khong phai CPU nhu khi cai bang --index-url cpu o may local), nen GPU van chay.
-RUN pip install --no-cache-dir voxcpm runpod boto3 requests
+# faster-whisper: tu phien am clip mau cho clone (VoxCPM2 bat buoc prompt_text)
+RUN pip install --no-cache-dir voxcpm faster-whisper runpod boto3 requests
 
 WORKDIR /app
 ENV HF_HOME=/root/.cache/huggingface
@@ -25,6 +26,9 @@ print('Downloading VoxCPM2...', flush=True); \
 snapshot_download('openbmb/VoxCPM2', cache_dir='/root/.cache/huggingface'); \
 print('VoxCPM2 downloaded', flush=True); \
 "
+
+# Bake whisper base model (tranh tai luc cold start; nap CPU chi de cache CT2 model)
+RUN python -c "from faster_whisper import WhisperModel; WhisperModel('base', device='cpu', compute_type='int8'); print('whisper base baked', flush=True)"
 
 COPY handler.py /app/handler.py
 
