@@ -12,11 +12,10 @@ FROM pytorch/pytorch:2.8.0-cuda12.8-cudnn9-runtime
 RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg git && rm -rf /var/lib/apt/lists/*
 
 # voxcpm keo torch/transformers/... theo pin cua no. faster-whisper: tu phien am clip mau cho clone.
-RUN pip install --no-cache-dir voxcpm faster-whisper runpod boto3 requests
-
-# SLIM: go cac goi CHI dung cho UI demo / plotting / training-data (KHONG dinh inference clone).
-# Da xac minh cuc bo: `from voxcpm import VoxCPM` KHONG nap cac goi nay -> go an toan, image nho hon ~1-2GB.
-RUN pip uninstall -y gradio gradio-client hf-gradio safehttpx spaces matplotlib contourpy datasets 2>/dev/null || true
+# SLIM: install + uninstall PHAI CUNG 1 RUN (layer Docker bat bien -> uninstall layer rieng KHONG giam size).
+# Go cac goi CHI cho UI demo / plotting / training (da xac minh `import VoxCPM` khong nap chung).
+RUN pip install --no-cache-dir voxcpm faster-whisper runpod boto3 requests \
+ && (pip uninstall -y gradio gradio-client hf-gradio safehttpx spaces matplotlib contourpy datasets scikit-learn umap-learn pynndescent || true)
 
 WORKDIR /app
 ENV HF_HOME=/root/.cache/huggingface
